@@ -1,0 +1,85 @@
+---
+title: "NYPD Shooting Analysis"
+author: "Cristian Hohbein"
+date: "2024-11-09"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+data <- read.csv("NYPD_Shooting_Incident_Data__Historic_.csv")
+library(dplyr)
+library(lubridate)
+library(hms)
+library(ggplot2)
+```
+
+```{r}
+data <- data %>%
+  mutate(
+    OCCUR_DATE = mdy(OCCUR_DATE),
+    OCCUR_TIME = as_hms(OCCUR_TIME)
+  )
+```
+
+```{r}
+# Get subset of columns to focus on
+data_subset <- data %>%
+  select(OCCUR_DATE,OCCUR_TIME,LOC_OF_OCCUR_DESC,PRECINCT,LOC_CLASSFCTN_DESC,LOCATION_DESC)
+# Cleaning columns
+data_subset <- data_subset %>%
+  mutate(LOCATION_DESC = ifelse(is.na(LOCATION_DESC)|LOCATION_DESC == "(null)"|LOCATION_DESC == "NONE"|LOCATION_DESC == "", "Unknown", LOCATION_DESC))
+
+data_subset <- data_subset %>%
+  filter(LOCATION_DESC != "Unknown")
+
+
+```
+
+```{r}
+location_counts <- data_subset %>%
+  dplyr::count(LOCATION_DESC)
+
+split_high_loc_counts <- location_counts %>% filter(n>1100)
+split_low_loc_counts <- location_counts %>% filter(n<=1100)
+```
+
+```{r}
+ggplot(split_high_loc_counts, aes(x = reorder(LOCATION_DESC, -n), y = n)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Higher Density Shootings by Location",
+       x = "Location Type",
+       y = "Count") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(split_low_loc_counts, aes(x = reorder(LOCATION_DESC, -n), y = n)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Lower Density Shootings by Location",
+       x = "Location Type",
+       y = "Count") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r}
+monthly_counts <- data_subset %>%
+  select(OCCUR_DATE) %>%
+  mutate(Month = month(OCCUR_DATE, label = TRUE, abbr = TRUE))
+monthly_counts <- monthly_counts %>%
+  count(Month)
+
+monthly_counts
+```
+
+```{r}
+ggplot(monthly_counts,aes(x=Month,y=n)) +
+  geom_bar(stat="identity",fill="pink",color="black") +
+  labs(title="Crime by Month",
+       x = "Month",
+       y = "Number of Crimes Reported")
+```
+
+
